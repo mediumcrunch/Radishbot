@@ -1,0 +1,26 @@
+{
+  "name": "radishbot",
+  "version": "1.0.0",
+  "description": "A Discord bot for Mamamoo fans.",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mamamoo",
+    "kpop",
+    "discord",
+    "bot"
+  ],
+  "author": "Medium Crunch",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^11.5.1",
+    "giphy-js-sdk-core": "^1.0.6",
+    "nedb": "^1.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.4"
+  }
+}
