@@ -15,6 +15,20 @@ const Datastore = require("nedb");
 const db = new Datastore("database.db");
 db.loadDatabase();
 
+// data stuff (persitence)
+const tictactoeData = {
+  spaces: Array(9).fill(null),
+  player: 1,
+  playerOne: ":x:",
+  playerTwo: ":o:",
+  victor: null
+};
+
+const hangmanData = {
+  per: 0,
+  words: ["dab", "moonbyul", "hwasa"]
+};
+
 client.once("ready", () => {
   console.log(`${client.user.tag} is ready!`);
 });
@@ -110,6 +124,131 @@ client.on("message", message => {
 
     // db.findOne({ user: {$exists:true}}, err)
   }
+
+  // hangman command
+  if (command === "hangman" || command === "hm") {
+    let letter = args[0];
+
+    if (letter) {
+      if (letter.length === 1 && letter.match(/[a-z]/)) {
+        hangman(letter.toLowerCase());
+      } else {
+        console.log("guess a letter a-z");
+      }
+    } else {
+      console.log("guess a letter a-z");
+    }
+  }
+
+  // tictactoe command
+  if (command === "tictactoe" || command === "ttt") {
+    let { spaces, player, playerOne, playerTwo, victor } = tictactoeData;
+
+    let tile = args[0];
+
+    if (tile <= 9 && tile >= 1 && spaces[tile - 1] === null) {
+      let tiles = [":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+      let board = [];
+
+      // update spaces
+      spaces[tile - 1] = player;
+
+      // update board
+      spaces.forEach((space, i) => {
+        if (space === null) {
+          board.push(tiles[i]);
+        } else {
+          let icon = space === 1 ? playerOne : playerTwo;
+          board.push(icon);
+        }
+
+        if ((i + 1) % 3 === 0) {
+          board.push("\n");
+        } else {
+          board.push(" ");
+        }
+      });
+
+      // update player
+      tictactoeData.player = player === 1 ? 2 : 1;
+
+      message.channel.send(`${board.join("")}`).then(msg => {
+        msg.react(moo);
+      });
+    } else if (tile === "reset") {
+      tttReset();
+
+      message.channel.send(`Board reset. Please specify a tile 1-9.`);
+    } else {
+      message.channel.send(`Please specify an unclaimed tile 1-9.`);
+    }
+
+    tttVictoryCheck(commandAuthor);
+  }
 });
 
 client.login(token);
+
+const tttVictoryCheck = commandAuthor => {
+  console.log("checking for victory");
+
+  let { spaces, player, victor, playerOne, playerTwo } = tictactoeData;
+
+  const scenarios = [
+    [0, 4, 8],
+    [2, 4, 6],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8]
+  ];
+
+  scenarios.map(scenario => {
+    let [a, b, c] = scenario;
+
+    if (spaces[a] && spaces[a] === spaces[b] && spaces[a] === spaces[c]) {
+      // somebody won
+      victor = player;
+
+      console.log(`victor`, victor);
+      if (victor) {
+        let player = victor === 1 ? playerOne : playerTwo;
+
+        message.channel.send(`Player ${player} wins!`);
+      }
+
+      // upsert victory count for winner
+      // TODO
+      // db.update({ user: commandAuthor.id }, { $inc: { tttWins: 1 } }, { upsert: true }, err => console.log(err));
+
+      // upsert loss count for loser
+      // TODO
+
+      console.log(victor);
+    } else if (spaces.indexOf(null) === -1) {
+      // upsert tied game count
+    }
+  });
+
+  // tttReset();
+};
+
+const tttReset = () => {
+  let { spaces, player, victor } = tictactoeData;
+
+  spaces = Array(9).fill(null);
+  player = 1;
+  victor = null;
+};
+
+const hangman = letter => {
+  // hangmanData.words;
+  hangmanData.per += 1;
+  console.log(letter, letter.length, hangmanData.per);
+
+  if (hangmanData.per >= 3) {
+    hangmanData.per = 0;
+  }
+};
