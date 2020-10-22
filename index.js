@@ -16,8 +16,9 @@ const db = new Datastore("database.db");
 db.loadDatabase();
 
 // data stuff (persitence)
-const tictactoeData = {
+const ticTacToeData = {
   spaces: Array(9).fill(null),
+  lastPlayer: null,
   player: 1,
   playerOne: ":x:",
   playerTwo: ":o:",
@@ -142,57 +143,75 @@ client.on("message", message => {
 
   // tictactoe command
   if (command === "tictactoe" || command === "ttt") {
-    let { spaces, player, playerOne, playerTwo, victor } = tictactoeData;
+    console.log(ticTacToeData.lastPlayer);
+    const { spaces, lastPlayer, player, playerOne, playerTwo } = ticTacToeData;
+    const tile = parseInt(args[0] - 1);
+    const tiles = [":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+    let board = "";
+    let msg;
 
-    let tile = args[0];
-
-    if (tile <= 9 && tile >= 1 && spaces[tile - 1] === null) {
-      let tiles = [":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
-      let board = [];
-
-      // update spaces
-      spaces[tile - 1] = player;
-
-      // update board
-      spaces.forEach((space, i) => {
-        if (space === null) {
-          board.push(tiles[i]);
-        } else {
-          let icon = space === 1 ? playerOne : playerTwo;
-          board.push(icon);
-        }
-
-        if ((i + 1) % 3 === 0) {
-          board.push("\n");
-        } else {
-          board.push(" ");
-        }
-      });
-
-      // update player
-      tictactoeData.player = player === 1 ? 2 : 1;
-
-      message.channel.send(`${board.join("")}`).then(msg => {
-        msg.react(moo);
-      });
-    } else if (tile === "reset") {
+    // check for reset command
+    if (tile === "reset") {
       tttReset();
 
-      message.channel.send(`Board reset. Please specify a tile 1-9.`);
+      board = "";
+      msg = `Board reset. Please specify a tile 1-9.`;
     } else {
-      message.channel.send(`Please specify an unclaimed tile 1-9.`);
+      // check for valid tile
+      if (spaces[tile] === null) {
+        // check if current player is the same as the previous player
+        if (lastPlayer !== commandAuthor.id) {
+          spaces[tile] = player; // claim tile using current player
+          ticTacToeData.player = player === 1 ? 2 : 1; // update current player
+          ticTacToeData.lastPlayer = commandAuthor.id; // update previous player
+          console.log("commandAuthor", commandAuthor.id);
+          console.log("lastPlayer", lastPlayer);
+
+          let nextPlayer = player === 1 ? playerTwo : playerOne;
+
+          msg = `It is currently ${nextPlayer}'s turn.`;
+        } else {
+          msg = `You've already taken your turn.`;
+        }
+      } else {
+        msg = `Please specify an unclaimed tile 1-9.`;
+      }
     }
 
+    spaces.forEach((space, i) => {
+      if (space === null) {
+        board += tiles[i];
+      } else {
+        board += space === 1 ? playerOne : playerTwo;
+      }
+
+      if ((i + 1) % 3 === 0) {
+        board += `\n`;
+      } else {
+        board += ` `;
+      }
+    });
+
+    // check for victory
     tttVictoryCheck(commandAuthor);
+
+    if (ticTacToeData.victor === null) {
+      message.channel.send(board);
+      message.channel.send(msg);
+    } else {
+      let victor = player === 1 ? playerOne : playerTwo;
+      message.channel.send(board);
+      message.channel.send(`Player ${victor} wins!`);
+      message.channel.send(`Board reset. Please specify a tile 1-9.`);
+      tttReset();
+    }
   }
 });
 
 client.login(token);
 
 const tttVictoryCheck = commandAuthor => {
-  console.log("checking for victory");
-
-  let { spaces, player, victor, playerOne, playerTwo } = tictactoeData;
+  const { spaces, player } = ticTacToeData;
 
   const scenarios = [
     [0, 4, 8],
@@ -210,14 +229,7 @@ const tttVictoryCheck = commandAuthor => {
 
     if (spaces[a] && spaces[a] === spaces[b] && spaces[a] === spaces[c]) {
       // somebody won
-      victor = player;
-
-      console.log(`victor`, victor);
-      if (victor) {
-        let player = victor === 1 ? playerOne : playerTwo;
-
-        message.channel.send(`Player ${player} wins!`);
-      }
+      ticTacToeData.victor = player;
 
       // upsert victory count for winner
       // TODO
@@ -225,22 +237,18 @@ const tttVictoryCheck = commandAuthor => {
 
       // upsert loss count for loser
       // TODO
-
-      console.log(victor);
     } else if (spaces.indexOf(null) === -1) {
       // upsert tied game count
+      // TODO
     }
   });
-
-  // tttReset();
 };
 
 const tttReset = () => {
-  let { spaces, player, victor } = tictactoeData;
-
-  spaces = Array(9).fill(null);
-  player = 1;
-  victor = null;
+  ticTacToeData.spaces = Array(9).fill(null);
+  ticTacToeData.lastPlayer = null;
+  ticTacToeData.player = 1;
+  ticTacToeData.victor = null;
 };
 
 const hangman = letter => {
